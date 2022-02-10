@@ -2,12 +2,8 @@
 import os
 from tensorflow import keras
 from keras.preprocessing.image import ImageDataGenerator
+from manage_data import *
 
-
-PREPROCESSED_PATH = "Preprocessed_Images"
-TRAIN_IMG_PATH = os.path.join(PREPROCESSED_PATH, "train")
-VAL_IMG_PATH = os.path.join(PREPROCESSED_PATH, "val")
-TEST_IMG_PATH = os.path.join(PREPROCESSED_PATH, "test")
 
 MODEL_SAVE_PATH = "Checkpoint/EfficientNet_Checkpoint"
 
@@ -20,7 +16,7 @@ BATCH_SIZE_TRAIN = 8
 BATCH_SIZE_VAL = 1 # Must be 1
 BATCH_SIZE_TEST = 1 # Must be 1
 
-SAVE_AFTER_EACH = 10
+SAVE_AFTER_EACH = 5
 SIZE = (IMG_HEIGHT, IMG_WIDTH)
 INPUT_SHAPE = (IMG_HEIGHT, IMG_WIDTH, 3)
 
@@ -47,8 +43,11 @@ val_generator = val_datagen.flow_from_directory(
 # model saving specifications
 class CustomSaver(keras.callbacks.Callback):
         def on_epoch_end(self, epoch, logs={}):
+                # for different augmentation
+                do_preprocess("train") 
+                
                 if epoch % SAVE_AFTER_EACH == 0:
-                        self.model.save(MODEL_SAVE_PATH + "efficientnet_{}.hd5".format(epoch))
+                        self.model.save(os.path.join(MODEL_SAVE_PATH, "efficientnet_{}.hd5".format(epoch)))
                         print("Saving checkpoint at epoch {}".format(epoch + 1))
 
 # compile

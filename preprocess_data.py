@@ -177,7 +177,6 @@ def preprocess_image_train(image_path, image_size=RESIZE_SHAPE):
     image = cv2.resize(image, image_size, interpolation = cv2.INTER_LANCZOS4)
 
     # Chance for augmentation
-    random.seed(2333333)
     if random.random() < AUGMENTATION_CHANCE:
         img = image.astype(np.float32)              # cvtColor does not support float64
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # cv2 uses BGR, tf uses RGB

@@ -1,8 +1,9 @@
 
-old results
 Checkpoint
 *.odt
 z_*
+old*
+*results.csv
 
 # Images
 Dataset*

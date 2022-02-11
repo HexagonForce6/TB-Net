@@ -1,13 +1,13 @@
+'''
+Contains utility functions for preprocessing data
+'''
 
-import numpy as np
-import tensorflow as tf
-import random
+import os
+import math
 import cv2
+import numpy as np
 
 RESIZE_SHAPE = (224, 224)
-
-# Chance that a random augmentation will be performed on an image
-AUGMENTATION_CHANCE = 1.0
 
 # Create the average mask
 avg_train_intensity = (0.531459229, 0.531459229, 0.531459229)
@@ -37,10 +37,6 @@ def is_padding(row):
             padding = True
     return padding
 
-
-'''
-For the preprocessing of validation and testing data
-'''
 def preprocess_image_inference(image_path, image_size=RESIZE_SHAPE):
     '''
     Processes the image according to how the data was cleaned originally,
@@ -117,10 +113,11 @@ def preprocess_image_inference(image_path, image_size=RESIZE_SHAPE):
     return image
 
 
-'''
-For the preprocessing and augmentation of training data
-'''
-def preprocess_image_train(image_path, image_size=RESIZE_SHAPE):
+def preprocess_image(image_path, image_size=RESIZE_SHAPE):
+    '''
+    Processes the image according to how the data was cleaned. Skips
+    the preprocessing steps done in the DSI.
+    '''
 
     # Read in the image as color, then split and use only the B channel
     image_color = cv2.imread(image_path, 1)
@@ -169,44 +166,10 @@ def preprocess_image_train(image_path, image_size=RESIZE_SHAPE):
     # Normalize image, by rescaling the intensities to [0-1]
     min_value = np.min(b)
     max_value = np.max(b)
-    image = np.divide(np.subtract(image, min_value), max_value)
-
-    # Crop to smaller bounding box
-    # We crop to the box (11, 11, 168, 202), then resize it back
-    image = image[11:168, 11:202]
-    image = cv2.resize(image, image_size, interpolation = cv2.INTER_LANCZOS4)
-
-    # Chance for augmentation
-    if random.random() < AUGMENTATION_CHANCE:
-        img = image.astype(np.float32)              # cvtColor does not support float64
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # cv2 uses BGR, tf uses RGB
-        img = tf.convert_to_tensor(img, dtype=tf.float32) 
-        # Select an augmentation randomly to perform. randint is inclusive.
-        which_aug = random.randint(0,3)
-        if which_aug == 0:
-            img = tf.image.random_crop(img, [202,202,3])
-            img = tf.image.resize(img, [224,224])
-        elif which_aug == 1:
-            img = tf.image.random_flip_left_right(img)
-        elif which_aug == 2:
-            img = tf.image.random_brightness(img, 0.1)
-        elif which_aug == 3:
-            img = tf.image.random_contrast(img, 0, 0.2)
-
-        image = tf.reverse(img, axis=[-1])      # convert from RGB back to BGR
-        image = image.numpy().astype('float64') # convert back to float64
-
-    # Apply the average mask in the upper corners.
-    # This is done during training in order to hide possible metadata
-    # that is included in some of the images. 
-    image = cv2.bitwise_and(image, black_mask)
-
-    # Renormalize the image 
-    min_value = np.min(image)
-    max_value = np.max(image)
-    image = np.divide(np.subtract(image, min_value), max_value)
-
-    # Finally, fill the corners with the average intensity of the training data
-    image = cv2.addWeighted(image, 1, avg_mask, 1, 0)
+    image = np.divide(np.subtract(image, min_value), max_value) * 255
+    image = image.astype(np.uint8)
 
     return image
+
+
+

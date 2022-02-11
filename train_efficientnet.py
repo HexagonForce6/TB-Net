@@ -3,49 +3,27 @@ import os
 from tensorflow import keras
 from keras.preprocessing.image import ImageDataGenerator
 from manage_data import *
+from dsi import *
 
 
-MODEL_SAVE_PATH = "Checkpoint/EfficientNet_Checkpoint"
+MODEL_SAVE_PATH = "Checkpoint"
 
-NUM_CLASSES = 2
-IMG_HEIGHT = 224
-IMG_WIDTH = 224
 L_R = 0.0001
-NUM_EPOCH = 200
-BATCH_SIZE_TRAIN = 8
-BATCH_SIZE_VAL = 1 # Must be 1
-BATCH_SIZE_TEST = 1 # Must be 1
-
+NUM_EPOCH = 201
 SAVE_AFTER_EACH = 5
 SIZE = (IMG_HEIGHT, IMG_WIDTH)
 INPUT_SHAPE = (IMG_HEIGHT, IMG_WIDTH, 3)
 
-
 os.makedirs(MODEL_SAVE_PATH, exist_ok=True)
 
-train_datagen = ImageDataGenerator()
-val_datagen = ImageDataGenerator()
-
-train_generator = train_datagen.flow_from_directory(
-        TRAIN_IMG_PATH,
-        target_size = SIZE,
-        batch_size = BATCH_SIZE_TRAIN,
-        class_mode = "categorical"
-)
-
-val_generator = val_datagen.flow_from_directory(
-        VAL_IMG_PATH,
-        target_size = SIZE,
-        batch_size = BATCH_SIZE_VAL,
-        class_mode = "categorical"
-)
+dsi = TBNetDSI(DATASET_FLAT_PATH)
+train_dataset, train_dataset_size, train_batch_size = dsi.get_train_dataset()
+val_dataset, _, _ = dsi.get_validation_dataset()
+test_dataset, _, _ = dsi.get_test_dataset()
 
 # model saving specifications
 class CustomSaver(keras.callbacks.Callback):
         def on_epoch_end(self, epoch, logs={}):
-                # for different augmentation
-                do_preprocess("train") 
-                
                 if epoch % SAVE_AFTER_EACH == 0:
                         self.model.save(os.path.join(MODEL_SAVE_PATH, "efficientnet_{}.hd5".format(epoch)))
                         print("Saving checkpoint at epoch {}".format(epoch + 1))
@@ -68,6 +46,5 @@ model.summary()
 
 # save
 saver = CustomSaver()
-hist = model.fit(train_generator, epochs=NUM_EPOCH, validation_data = val_generator,
-                verbose=1, callbacks=[saver])
-
+hist = model.fit(train_dataset, epochs=NUM_EPOCH, validation_data = val_dataset,
+                verbose=1, callbacks=[saver], steps_per_epoch = int(train_dataset_size/train_batch_size))

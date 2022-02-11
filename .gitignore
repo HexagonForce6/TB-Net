@@ -1,13 +1,11 @@
 
 Checkpoint
-*.odt
-z_*
+*.csv
 old*
-*results.csv
+z_draft.py
 
 # Images
 Dataset*
-Preprocessed*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

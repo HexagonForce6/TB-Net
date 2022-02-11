@@ -3,53 +3,49 @@ import numpy as np
 import os
 import csv
 from sklearn.metrics import confusion_matrix,roc_auc_score
+import tensorflow as tf
 from tensorflow import keras
 from keras.preprocessing.image import ImageDataGenerator
 from tqdm import tqdm
+from dsi import *
+import tensorflow_datasets as tfds
 
 
-PREPROCESSED_PATH = "Preprocessed_Images"
-TEST_IMG_PATH = os.path.join(PREPROCESSED_PATH, "test")
-MODEL_SAVE_PATH = "Checkpoint/EfficientNet_Checkpoint"
-RESULT_SAVE_CSV = 'efficientnet_test_results.csv'
+MODEL_SAVE_PATH = "Checkpoint"
+RESULT_SAVE_CSV = 'efficientnet_test_results_200.csv'
 
-NUM_CLASSES = 2
-IMG_HEIGHT = 224
-IMG_WIDTH = 224
+dsi = TBNetDSI("Dataset_Flat")
+test_dataset, _, _ = dsi.get_test_dataset()
 
-BATCH_SIZE_TEST = 1 # Must be 1
-
-SIZE = (IMG_HEIGHT, IMG_WIDTH)
-INPUT_SHAPE = (IMG_HEIGHT, IMG_WIDTH, 3)
-
-
-test_datagen = ImageDataGenerator()
-test_generator = test_datagen.flow_from_directory(
-        TEST_IMG_PATH,
-        target_size = SIZE,
-        batch_size = BATCH_SIZE_TEST,
-        class_mode = "categorical",
-        shuffle = False
-)
+tf.compat.v1.enable_eager_execution()
 
 with open(RESULT_SAVE_CSV, mode = 'w') as csv_file:
     csv_writer = csv.writer(csv_file, delimiter=',', quotechar='|')
     csv_writer.writerow(['Epoch', 'TN', 'FP', 'FN', 'TP', 'Accuracy', 'Sensitivity', 'Specificity', 'AUC_ROC'])
 
-    for epoch in tqdm(range(0, 200, 5)):
+    for epoch in tqdm(range(0, 201, 5)):
         model = keras.models.load_model(os.path.join(MODEL_SAVE_PATH, "efficientnet_" + str(epoch) + ".hd5"))
         #print("Epoch " + str(epoch) + ":")
 
-        score = model.predict(test_generator)
-        y_true = test_generator.classes
+        score = model.predict(test_dataset, batch_size = BATCH_SIZE_TEST)
+
+        # fetch labels
+        y_true = []
+        for sample in tfds.as_numpy(test_dataset):
+            label = int(sample[1][0][0])
+            if label == 1: y_true.append(0)
+            else: y_true.append(1)
+        #print(y_true)
+
         y_pred_raw = score > 0.5
 
-        # adjust the format of y_pred
+        # adjust the format of y_pred to match y_true
         y_pred = []
         for i in y_pred_raw:
             if i[0]==True: y_pred.append(0)
             else: y_pred.append(1)
         y_pred = np.array(y_pred)
+        #print(y_pred)
 
         # confusion matrix
         matrix = confusion_matrix(y_true, y_pred)
